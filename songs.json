@@ -1,0 +1,39 @@
+[
+  {
+    "id": "vieni-da-me",
+    "title": "Vieni da me",
+    "audio": "audio/vieni-da-me.mp3",
+    "lrc": "songs/vieni-da-me.lrc"
+  },
+  {
+    "id": "un-avventura",
+    "title": "Un'avventura",
+    "audio": "audio/un-avventura.mp3",
+    "lrc": "songs/un-avventura.lrc"
+  },
+  {
+    "id": "una-su-un-milione",
+    "title": "Una su un milione",
+    "audio": "audio/una-su-un-milione.mp3",
+    "lrc": "songs/una-su-un-milione.lrc"
+  },
+  {
+    "id": "sara-perche-ti-amo",
+    "title": "Sarà perché ti amo",
+    "audio": "audio/sara-perche-ti-amo.mp3",
+    "lrc": "songs/sara-perche-ti-amo.lrc"
+  },
+  {
+    "id": "supereroi",
+    "title": "Supereroi",
+    "audio": "audio/supereroi.mp3",
+    "lrc": "songs/supereroi.lrc"
+  },
+  {
+    "id": "tamaramia",
+    "title": "Tamara mia",
+    "audio": "audio/tamaramia.mp3",
+    "lrc": "songs/tamaramia.lrc"
+  }
+]
+`
