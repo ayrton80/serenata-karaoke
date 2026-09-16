@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Karaoke Serenata - Sposo e Tutti</title>
+<style>
+:root{--bg:#07090e;--yellow:#ffd400;--past:#666a73;--future:#f3f4f6;--far:#9ca3af;--sposo:#2563eb;--tutti:#16a34a}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;overflow:hidden}
+#setup{position:fixed;inset:0;z-index:10;background:#111827;padding:24px;overflow:auto}.box{max-width:700px;margin:auto}.box h1{margin-top:0}.note{color:#d1d5db;line-height:1.5}label{display:block;margin:18px 0 6px;font-weight:750}input,button{font:inherit}input[type=file]{width:100%;padding:13px;border-radius:10px;background:#fff;color:#111}button{margin-top:20px;border:0;border-radius:10px;padding:14px 19px;background:var(--yellow);color:#111;font-weight:850;cursor:pointer}#error{margin-top:12px;color:#ff9b9b;font-weight:700}
+#viewport{height:100dvh;display:flex;align-items:center;justify-content:center;padding:3vh 4vw 12vh}#karaoke{width:min(1100px,95vw)}
+#role{text-align:center;margin-bottom:clamp(12px,2.5vh,28px);min-height:48px}.badge{display:inline-block;padding:.32em .9em;border-radius:999px;font-size:clamp(23px,5vw,48px);font-weight:950;letter-spacing:.06em;box-shadow:0 0 24px rgba(255,255,255,.10)}.badge.sposo{background:var(--sposo)}.badge.tutti{background:var(--tutti)}
+#lyrics{display:grid;grid-template-rows:repeat(5,auto);gap:clamp(10px,1.8vh,22px);align-items:center}.row{text-align:center;line-height:1.18;font-weight:700;text-wrap:balance;transition:opacity .25s ease,color .25s ease}.row.prev{font-size:clamp(18px,3.9vw,35px);color:var(--past);opacity:.7}.row.current{font-size:clamp(32px,7vw,68px);color:var(--future);font-weight:900;min-height:1.25em}.row.next{font-size:clamp(23px,4.8vw,45px);color:var(--future);opacity:.94}.row.far{font-size:clamp(19px,3.9vw,36px);color:var(--far);opacity:.74}.word{color:var(--future);transition:color .07s linear}.word.done{color:var(--yellow)}
+.preview-role{display:inline-block;margin-right:.55em;padding:.12em .42em;border-radius:.35em;color:#fff;font-size:.55em;vertical-align:.16em;font-weight:900}.preview-role.sposo{background:var(--sposo)}.preview-role.tutti{background:var(--tutti)}
+#controls{position:fixed;left:0;right:0;bottom:0;padding:9px;text-align:center;background:linear-gradient(transparent,#000);opacity:.18;transition:opacity .2s}#controls:hover,#controls:focus-within{opacity:1}audio{width:min(700px,94vw)}#status{position:fixed;top:10px;right:14px;color:#777;font-size:12px}
+</style></head>
+<body>
+<section id="setup"><div class="box"><h1>Karaoke Serenata</h1><p class="note">Carica la base MP3 definitiva e l'Enhanced LRC contenente i marcatori [SPOSO] e [TUTTI]. Il marcatore resta valido fino al successivo.</p><label>1. Base MP3</label><input id="audioFile" type="file" accept="audio/*"><label>2. Enhanced LRC</label><input id="lrcFile" type="file" accept=".lrc,text/plain"><button id="start">Avvia prova</button><div id="error"></div></div></section>
+<main id="viewport"><div id="karaoke"><div id="role"></div><div id="lyrics"><div class="row prev" id="rPrev"></div><div class="row current" id="rCurrent">Carica MP3 e LRC</div><div class="row next" id="rNext1"></div><div class="row far" id="rNext2"></div><div class="row far" id="rNext3"></div></div></div></main>
+<div id="status"></div><div id="controls"><audio id="audio" controls></audio></div>
+<script>
+const $=s=>document.querySelector(s),audio=$('#audio');let lines=[],lastIdx=null;
+function sec(t){const p=t.split(':');return Number(p[0])*60+Number(p[1])}
+function decode(s){const x=document.createElement('textarea');x.innerHTML=s;return x.value}
+function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[c]))}
+function parseLRC(raw){raw=decode(raw).replace(/<br\s*\/?\s*>/gi,'\n');const out=[];let role='';
+ for(const source0 of raw.split(/\r?\n/)){const source=source0.trim();const roleMatch=source.match(/^\[(SPOSO|TUTTI)\]$/i);if(roleMatch){role=roleMatch[1].toUpperCase();continue}
+  const m=source.match(/^\[(\d{1,2}:\d{2}(?:\.\d+)?)\]\s*(.*)$/);if(!m)continue;const start=sec(m[1]),body=m[2];let words=[],a,re=/<(\d{1,2}:\d{2}(?:\.\d+)?)>\s*([^<]*)/g;
+  while((a=re.exec(body))!==null){const text=a[2].trim();if(text)words.push({time:sec(a[1]),text})}if(!words.length&&body.trim())words=[{time:start,text:body.trim()}];if(words.length)out.push({start,role,words,text:words.map(w=>w.text).join(' ')})}
+ return out.sort((a,b)=>a.start-b.start)}
+function info(i){return i>=0&&i<lines.length?lines[i]:null}
+function preview(i){const x=info(i);if(!x)return '';const badge=x.role?`<span class="preview-role ${x.role.toLowerCase()}">${x.role}</span>`:'';return badge+esc(x.text)}
+function currentIndex(now){let idx=-1;for(let i=0;i<lines.length;i++){if(lines[i].start<=now)idx=i;else break}return idx}
+function setRole(role){$('#role').innerHTML=role?`<span class="badge ${role.toLowerCase()}">${role==='SPOSO'?'CANTA LO SPOSO':'TUTTI'}</span>`:''}
+function draw(){const now=audio.currentTime,idx=currentIndex(now);if(!lines.length){requestAnimationFrame(draw);return}
+ if(idx!==lastIdx){$('#rPrev').innerHTML=preview(idx-1);$('#rNext1').innerHTML=preview(idx+1);$('#rNext2').innerHTML=preview(idx+2);$('#rNext3').innerHTML=preview(idx+3);setRole(idx>=0?lines[idx].role:(lines[0]?.role||''));lastIdx=idx}
+ if(idx<0){$('#rCurrent').textContent='La canzone sta per iniziare';$('#rNext1').innerHTML=preview(0);$('#rNext2').innerHTML=preview(1);$('#rNext3').innerHTML=preview(2)}else{$('#rCurrent').innerHTML=lines[idx].words.map(w=>`<span class="word ${now>=w.time?'done':''}">${esc(w.text)}</span>`).join(' ')}
+ $('#status').textContent=`${Math.floor(now/60)}:${String(Math.floor(now%60)).padStart(2,'0')}`;requestAnimationFrame(draw)}
+$('#start').onclick=async()=>{try{const af=$('#audioFile').files[0],lf=$('#lrcFile').files[0];if(!af||!lf)throw Error('Seleziona sia il file MP3 sia il file LRC.');lines=parseLRC(await lf.text());if(!lines.length)throw Error('Non trovo righe temporizzate nel file LRC.');if(!lines.some(x=>x.role))throw Error('Non trovo i marcatori [SPOSO] o [TUTTI].');audio.src=URL.createObjectURL(af);$('#setup').style.display='none';await audio.play()}catch(e){$('#error').textContent=e.message}}
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();audio.paused?audio.play():audio.pause()}});draw();
+</script></body></html>
