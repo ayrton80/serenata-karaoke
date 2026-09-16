@@ -1,22 +1,175 @@
 <!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Serenata Karaoke</title>
-<style>
-:root{--bg:#07090e;--yellow:#ffd400;--past:#666a73;--future:#f3f4f6;--far:#9ca3af;--sposo:#2563eb;--tutti:#16a34a}*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;overflow:hidden}#viewport{height:100dvh;display:flex;align-items:center;justify-content:center;padding:3vh 4vw 15vh}#karaoke{width:min(1100px,95vw)}#role{text-align:center;margin-bottom:clamp(12px,2.5vh,28px);min-height:48px}.badge{display:inline-block;padding:.32em .9em;border-radius:999px;font-size:clamp(23px,5vw,48px);font-weight:950;letter-spacing:.06em}.badge.sposo{background:var(--sposo)}.badge.tutti{background:var(--tutti)}#lyrics{display:grid;grid-template-rows:repeat(5,auto);gap:clamp(10px,1.8vh,22px)}.row{text-align:center;line-height:1.18;font-weight:700;text-wrap:balance}.prev{font-size:clamp(18px,3.9vw,35px);color:var(--past);opacity:.7}.current{font-size:clamp(32px,7vw,68px);font-weight:900;min-height:1.25em}.next{font-size:clamp(23px,4.8vw,45px);opacity:.94}.far{font-size:clamp(19px,3.9vw,36px);color:var(--far);opacity:.74}.word{color:var(--future)}.word.done{color:var(--yellow)}.preview-role{display:inline-block;margin-right:.55em;padding:.12em .42em;border-radius:.35em;color:#fff;font-size:.55em;vertical-align:.16em;font-weight:900}.preview-role.sposo{background:var(--sposo)}.preview-role.tutti{background:var(--tutti)}#master{position:fixed;left:0;right:0;bottom:0;background:#111827;padding:10px;text-align:center;z-index:4}button{border:0;border-radius:9px;padding:10px 16px;margin:3px;font-weight:800;cursor:pointer}#play{background:#22c55e}#pause{background:#f59e0b}#reset{background:#ef4444;color:#fff}audio{width:min(620px,92vw);vertical-align:middle}#state{position:fixed;top:8px;left:10px;color:#9ca3af;font-size:12px}#error{position:fixed;inset:0;background:#111827;padding:30px;color:#ff9b9b;display:none;z-index:9;white-space:pre-wrap}
-</style></head><body>
-<div id="state">Connessione...</div><div id="error"></div><main id="viewport"><div id="karaoke"><div id="role"></div><div id="lyrics"><div class="row prev" id="rPrev"></div><div class="row current" id="rCurrent">In attesa del regista...</div><div class="row next" id="rNext1"></div><div class="row far" id="rNext2"></div><div class="row far" id="rNext3"></div></div></div></main>
-<section id="master" hidden><audio id="audio" controls preload="auto" src="audio/vieni-da-me.mp3"></audio><br><button id="play">PLAY</button><button id="pause">PAUSA</button><button id="reset">RESET</button></section>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090b10">
+  <title>Serenata Karaoke</title>
+  <style>
+    :root { --bg:#090b10; --card:#151922; --text:#f4f6f8; --muted:#737b89; --next:#d6dae0; --active:#ffd400; --accent:#64b5f6; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; min-height:100%; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
+    body { overflow:hidden; }
+    #app { height:100dvh; display:grid; grid-template-rows:auto 1fr auto; }
+    header { padding:14px 18px 10px; background:linear-gradient(180deg,#111722 0%,rgba(9,11,16,.92) 100%); border-bottom:1px solid #242b38; }
+    #title { margin:0; font-size:clamp(20px,5vw,32px); text-align:center; }
+    #status { margin-top:5px; text-align:center; color:#9ca5b3; font-size:13px; }
+    #role { min-height:31px; margin:12px auto 0; width:max-content; max-width:100%; padding:5px 13px; border-radius:999px; color:#07111a; background:var(--accent); font-weight:900; letter-spacing:.08em; visibility:hidden; }
+    #lyricsViewport { position:relative; overflow:hidden; padding:12vh 18px 18vh; }
+    #lyrics { transition:transform .35s ease; will-change:transform; }
+    .line { max-width:900px; margin:0 auto; padding:12px 4px; text-align:center; font-size:clamp(25px,7vw,48px); line-height:1.16; font-weight:800; color:var(--muted); opacity:.42; transition:color .25s,opacity .25s,transform .25s; }
+    .line.past { color:#606775; opacity:.32; }
+    .line.active { color:var(--active); opacity:1; transform:scale(1.025); text-shadow:0 0 18px rgba(255,212,0,.18); }
+    .line.next { color:var(--next); opacity:.94; }
+    .line.after { color:#aeb5c0; opacity:.68; }
+    footer { padding:10px 14px calc(10px + env(safe-area-inset-bottom)); background:#0d1118; border-top:1px solid #242b38; }
+    #progress { height:5px; background:#292f3a; border-radius:4px; overflow:hidden; }
+    #bar { width:0; height:100%; background:var(--active); transition:width .12s linear; }
+    #admin { display:none; gap:8px; justify-content:center; align-items:center; margin-top:10px; flex-wrap:wrap; }
+    #admin.visible { display:flex; }
+    button,select { border:1px solid #3a4352; border-radius:9px; padding:9px 13px; background:#1a202b; color:white; font-size:15px; }
+    button.primary { background:#ffd400; border-color:#ffd400; color:#151515; font-weight:900; }
+    #clock { min-width:92px; text-align:center; font-variant-numeric:tabular-nums; }
+    #error { display:none; position:fixed; inset:20px; z-index:10; padding:18px; border:1px solid #6d3232; border-radius:12px; background:#2b1212; color:#ffdede; overflow:auto; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1 id="title">Serenata</h1>
+    <div id="status">Caricamento…</div>
+    <div id="role"></div>
+  </header>
+  <main id="lyricsViewport"><div id="lyrics"></div></main>
+  <footer>
+    <div id="progress"><div id="bar"></div></div>
+    <div id="admin">
+      <select id="songSelect" aria-label="Canzone"></select>
+      <button id="back">−5 s</button>
+      <button id="play" class="primary">Avvia</button>
+      <button id="forward">+5 s</button>
+      <span id="clock">00:00</span>
+    </div>
+  </footer>
+</div>
+<div id="error"></div>
+
 <script type="module">
-import{initializeApp}from'https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js';import{getDatabase,ref,set,onValue,onDisconnect}from'https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js';
-const cfg={apiKey:'AIzaSyCyFu8hXvdaUKpZG-BCDwc8_LbpRhGbMN8',authDomain:'serenata-karaoke-f7acd.firebaseapp.com',databaseURL:'https://serenata-karaoke-f7acd-default-rtdb.europe-west1.firebasedatabase.app',projectId:'serenata-karaoke-f7acd',storageBucket:'serenata-karaoke-f7acd.firebasestorage.app',messagingSenderId:'48285679248',appId:'1:48285679248:web:ab7982a0a9a2e3a3d22215'};
-const $=s=>document.querySelector(s),isMaster=new URLSearchParams(location.search).has('master'),audio=$('#audio');let lines=[],remote={status:'stopped',position:0,startedAt:0},offset=0,lastIdx=null;
-if(isMaster)$('#master').hidden=false;else audio.remove();
-const app=initializeApp(cfg),db=getDatabase(app),stateRef=ref(db,'karaoke/state');onValue(ref(db,'.info/serverTimeOffset'),s=>offset=s.val()||0);onValue(ref(db,'.info/connected'),s=>$('#state').textContent=s.val()?(isMaster?'MASTER connesso':'VIEWER connesso'):'Disconnesso');onValue(stateRef,s=>{remote=s.val()||remote;if(isMaster)syncMasterToRemote()});
-function serverNow(){return Date.now()+offset}function sec(t){let p=t.split(':');return +p[0]*60+ +p[1]}function dec(s){let x=document.createElement('textarea');x.innerHTML=s;return x.value}function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
-function parse(raw){raw=dec(raw).replace(/<br\s*\/?\s*>/gi,'\n');let out=[],role='';for(let z of raw.split(/\r?\n/)){z=z.trim();let rm=z.match(/^\[(SPOSO|TUTTI)\]$/i);if(rm){role=rm[1].toUpperCase();continue}let m=z.match(/^\[(\d{1,2}:\d{2}(?:\.\d+)?)\]\s*(.*)$/);if(!m)continue;let start=sec(m[1]),words=[],a,re=/<(\d{1,2}:\d{2}(?:\.\d+)?)>\s*([^<]*)/g;while((a=re.exec(m[2]))){let text=a[2].trim();if(text)words.push({time:sec(a[1]),text})}if(words.length)out.push({start,role,words,text:words.map(w=>w.text).join(' ')})}return out.sort((a,b)=>a.start-b.start)}
-async function load(){try{let r=await fetch('songs/vieni-da-me.lrc',{cache:'no-store'});if(!r.ok)throw Error('File songs/vieni-da-me.lrc non trovato');lines=parse(await r.text());if(!lines.length)throw Error('LRC non riconosciuto')}catch(e){$('#error').style.display='block';$('#error').textContent=e.message+'\n\nControlla che nel repository esista songs/vieni-da-me.lrc.'}}load();
-function now(){if(remote.status==='playing')return remote.position+(serverNow()-remote.startedAt)/1000;return remote.position||0}function ix(t){let i=-1;for(let n=0;n<lines.length;n++){if(lines[n].start<=t)i=n;else break}return i}function inf(i){return i>=0&&i<lines.length?lines[i]:null}function preview(i){let x=inf(i);if(!x)return'';let b=x.role?`<span class="preview-role ${x.role.toLowerCase()}">${x.role}</span>`:'';return b+esc(x.text)}function role(r){$('#role').innerHTML=r?`<span class="badge ${r.toLowerCase()}">${r==='SPOSO'?'CANTA LO SPOSO':'TUTTI'}</span>`:''}
-function draw(){let t=now(),i=ix(t);if(lines.length){if(i!==lastIdx){$('#rPrev').innerHTML=preview(i-1);$('#rNext1').innerHTML=preview(i+1);$('#rNext2').innerHTML=preview(i+2);$('#rNext3').innerHTML=preview(i+3);role(i>=0?lines[i].role:lines[0].role);lastIdx=i}if(i<0)$('#rCurrent').textContent='La canzone sta per iniziare';else $('#rCurrent').innerHTML=lines[i].words.map(w=>`<span class="word ${t>=w.time?'done':''}">${esc(w.text)}</span>`).join(' ')}requestAnimationFrame(draw)}draw();
-async function write(status,position){await set(stateRef,{status,position,startedAt:status==='playing'?serverNow():0,updatedAt:serverNow()})}
-$('#play')?.addEventListener('click',async()=>{await audio.play();await write('playing',audio.currentTime)});$('#pause')?.addEventListener('click',async()=>{audio.pause();await write('paused',audio.currentTime)});$('#reset')?.addEventListener('click',async()=>{audio.pause();audio.currentTime=0;await write('stopped',0)});audio?.addEventListener('ended',()=>write('stopped',0));
-function syncMasterToRemote(){if(!isMaster)return;let t=now();if(Math.abs(audio.currentTime-t)>.5)audio.currentTime=Math.max(0,t);if(remote.status==='playing'&&audio.paused)audio.play().catch(()=>{});if(remote.status!=='playing'&&!audio.paused)audio.pause()}
-</script></body></html>
+/*
+  FILE ATTESO: songs.json, nella stessa cartella di index.html
+
+  Formato accettato:
+  {
+    "songs": [{
+      "id": "vieni-da-me",
+      "title": "Vieni da me",
+      "duration": 240,
+      "lines": [
+        {"time": 0.0, "role": "SPOSO", "text": "Prima riga"},
+        {"time": 4.5, "role": "SPOSO", "text": "Seconda riga"},
+        {"time": 9.2, "role": "TUTTI", "text": "Riga del coro"}
+      ]
+    }]
+  }
+
+  MODALITA REGISTA: aggiungere ?admin=1 all'indirizzo.
+  Questa versione di prova sincronizza automaticamente le schede aperte sullo
+  stesso dispositivo. Per sincronizzare telefoni diversi occorre compilare la
+  configurazione Firebase qui sotto.
+*/
+
+const firebaseConfig = {
+  // apiKey: "",
+  // authDomain: "",
+  // databaseURL: "",
+  // projectId: "",
+  // appId: ""
+};
+
+const $ = id => document.getElementById(id);
+const isAdmin = new URLSearchParams(location.search).get('admin') === '1';
+const channel = ('BroadcastChannel' in window) ? new BroadcastChannel('serenata-karaoke') : null;
+let songs=[], song=null, state={songId:null, playing:false, startedAt:0, pausedAt:0}, db=null;
+
+function showError(msg){ $('error').style.display='block'; $('error').textContent=msg; }
+function now(){ return Date.now()/1000; }
+function currentTime(){ return state.playing ? Math.max(0, now()-state.startedAt) : (state.pausedAt||0); }
+function fmt(s){ s=Math.max(0,Math.floor(s)); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+
+async function loadSongs(){
+  const r=await fetch('./songs.json',{cache:'no-store'});
+  if(!r.ok) throw new Error('Impossibile caricare songs.json ('+r.status+').');
+  const data=await r.json(); songs=Array.isArray(data)?data:data.songs;
+  if(!Array.isArray(songs)||!songs.length) throw new Error('songs.json non contiene alcuna canzone.');
+  for(const s of songs){ if(!s.id||!s.title||!Array.isArray(s.lines)) throw new Error('Formato songs.json non valido.'); }
+}
+
+function setSong(id){
+  song=songs.find(s=>s.id===id)||songs[0]; state.songId=song.id;
+  $('title').textContent=song.title; $('lyrics').innerHTML='';
+  song.lines.forEach((x,i)=>{ const d=document.createElement('div'); d.className='line'; d.dataset.i=i; d.textContent=x.text; $('lyrics').appendChild(d); });
+}
+
+function activeIndex(t){
+  let i=-1; for(let n=0;n<song.lines.length;n++){ if(song.lines[n].time<=t) i=n; else break; } return i;
+}
+
+function render(){
+  if(!song) return;
+  const t=currentTime(), idx=activeIndex(t), nodes=[...document.querySelectorAll('.line')];
+  nodes.forEach((n,i)=>{ n.className='line '+(i<idx?'past':i===idx?'active':i===idx+1?'next':i===idx+2?'after':''); });
+  const role=idx>=0?song.lines[idx].role:''; $('role').textContent=role||''; $('role').style.visibility=role?'visible':'hidden';
+  if(idx>=0&&nodes[idx]){
+    const viewport=$('lyricsViewport'), y=nodes[idx].offsetTop-viewport.clientHeight*.35;
+    $('lyrics').style.transform=`translateY(${-Math.max(0,y)}px)`;
+  }
+  const duration=song.duration || (song.lines.at(-1)?.time+8) || 1;
+  $('bar').style.width=Math.min(100,t/duration*100)+'%'; $('clock').textContent=fmt(t);
+  $('status').textContent=state.playing?'In corso':'In attesa'; $('play').textContent=state.playing?'Pausa':'Avvia';
+  requestAnimationFrame(render);
+}
+
+function normalizeState(v){
+  if(!v) return; state={...state,...v};
+  if(!song||song.id!==state.songId) setSong(state.songId);
+}
+
+async function publish(){
+  channel?.postMessage(state); localStorage.setItem('serenata-state',JSON.stringify(state));
+  if(db) await db.set(state);
+}
+
+async function setupRealtime(){
+  const configured=Boolean(firebaseConfig.apiKey&&firebaseConfig.databaseURL&&firebaseConfig.projectId);
+  if(!configured){
+    $('status').textContent='Prova locale';
+    channel?.addEventListener('message',e=>normalizeState(e.data));
+    addEventListener('storage',e=>{ if(e.key==='serenata-state'&&e.newValue) normalizeState(JSON.parse(e.newValue)); });
+    const saved=localStorage.getItem('serenata-state'); if(saved) normalizeState(JSON.parse(saved));
+    return;
+  }
+  const {initializeApp}=await import('https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js');
+  const {getDatabase,ref,set,onValue}=await import('https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js');
+  const app=initializeApp(firebaseConfig), database=getDatabase(app), refState=ref(database,'serenata/live');
+  db={set:v=>set(refState,v)}; onValue(refState,s=>{ if(s.exists()) normalizeState(s.val()); });
+}
+
+function setupAdmin(){
+  if(!isAdmin) return; $('admin').classList.add('visible');
+  songs.forEach(s=>{ const o=document.createElement('option'); o.value=s.id;o.textContent=s.title;$('songSelect').appendChild(o); });
+  $('songSelect').value=state.songId;
+  $('songSelect').onchange=async e=>{ state={songId:e.target.value,playing:false,startedAt:0,pausedAt:0};setSong(state.songId);await publish(); };
+  $('play').onclick=async()=>{ const t=currentTime(); if(state.playing){state.playing=false;state.pausedAt=t;}else{state.playing=true;state.startedAt=now()-t;}await publish(); };
+  $('back').onclick=async()=>{ const t=Math.max(0,currentTime()-5);state.pausedAt=t;if(state.playing)state.startedAt=now()-t;await publish(); };
+  $('forward').onclick=async()=>{ const t=currentTime()+5;state.pausedAt=t;if(state.playing)state.startedAt=now()-t;await publish(); };
+}
+
+(async()=>{
+  try{
+    await loadSongs(); state.songId=songs[0].id; setSong(state.songId);
+    await setupRealtime(); setupAdmin(); render();
+  }catch(e){ showError(e.message+' Controlla che index.html e songs.json siano nella stessa cartella e che GitHub Pages sia pubblicato.'); }
+})();
+</script>
+</body>
+</html>
